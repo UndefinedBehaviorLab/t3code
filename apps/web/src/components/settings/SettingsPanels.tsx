@@ -768,6 +768,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       fontFamilyComposer: DEFAULT_UNIFIED_SETTINGS.fontFamilyComposer,
       fontFamilyCode: DEFAULT_UNIFIED_SETTINGS.fontFamilyCode,
       fontFamilyTerminal: DEFAULT_UNIFIED_SETTINGS.fontFamilyTerminal,
+      fontFamilyFallback: DEFAULT_UNIFIED_SETTINGS.fontFamilyFallback,
       fontSizeInterface: DEFAULT_UNIFIED_SETTINGS.fontSizeInterface,
       fontSizePrompt: DEFAULT_UNIFIED_SETTINGS.fontSizePrompt,
       fontSizeCode: DEFAULT_UNIFIED_SETTINGS.fontSizeCode,

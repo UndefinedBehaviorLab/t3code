@@ -13,9 +13,9 @@ import {
 export const DEFAULT_SANS_FONT_STACK =
   '-apple-system, BlinkMacSystemFont, "Inter Variable", "Segoe UI", system-ui, sans-serif';
 
-// Some engines map `ui-monospace` to a proportional font, so prefer concrete names.
+// Mirrors index.css `@theme --font-mono` so setting only a fallback keeps the same code font.
 export const DEFAULT_CODE_FONT_STACK =
-  '"SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace';
+  'ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace';
 
 export const TYPOGRAPHY_ADVANCED_STORAGE_KEY = "t3code:typography-advanced";
 
@@ -53,15 +53,53 @@ function cssFontFamilies(input: string): string | null {
   return families.length > 0 ? families.join(", ") : null;
 }
 
-export function appearanceFontStack(custom: string, defaultStack: string): string {
-  const families = cssFontFamilies(custom);
-  return families === null ? defaultStack : `${families}, ${defaultStack}`;
+const GENERIC_FONT_FAMILIES: Readonly<Record<string, true>> = {
+  serif: true,
+  "sans-serif": true,
+  monospace: true,
+  cursive: true,
+  fantasy: true,
+  "system-ui": true,
+  "ui-serif": true,
+  "ui-sans-serif": true,
+  "ui-monospace": true,
+  "ui-rounded": true,
+  emoji: true,
+  math: true,
+  fangsong: true,
+};
+
+/** Insert before the trailing generic family, which must still lose to the fallback. */
+function stackWithFallback(defaultStack: string, fallbackList: string): string {
+  const parts = defaultStack.split(",").map((part) => part.trim());
+  const last = parts.at(-1) ?? "";
+  if (!GENERIC_FONT_FAMILIES[last.toLowerCase()]) return `${defaultStack}, ${fallbackList}`;
+  return [...parts.slice(0, -1), fallbackList, last].join(", ");
+}
+
+function resolvedFontList(
+  custom: string,
+  fallbackList: string | null,
+  defaultStack: string,
+): string | null {
+  const list = cssFontFamilies(custom);
+  if (list !== null) {
+    return fallbackList === null
+      ? `${list}, ${defaultStack}`
+      : `${list}, ${fallbackList}, ${defaultStack}`;
+  }
+  return fallbackList === null ? null : stackWithFallback(defaultStack, fallbackList);
+}
+
+export function appearanceFontStack(custom: string, defaultStack: string, fallback = ""): string {
+  return resolvedFontList(custom, cssFontFamilies(fallback), defaultStack) ?? defaultStack;
 }
 
 export interface AppearanceFontPreferences {
   readonly sans: string;
   readonly code: string;
   readonly composer: string;
+  readonly fallback: string;
   readonly sizeInterface: number;
   readonly sizePrompt: number;
   readonly sizeCode: number;
@@ -74,22 +112,34 @@ export function applyAppearanceFontVariables(
   root: HTMLElement,
   preferences: AppearanceFontPreferences,
 ): void {
-  const families: ReadonlyArray<readonly [variable: string, custom: string, fallback: string]> = [
+  const fallbackList = cssFontFamilies(preferences.fallback);
+  const stacks: ReadonlyArray<readonly [variable: string, custom: string, defaultStack: string]> = [
     ["--font-sans", preferences.sans, DEFAULT_SANS_FONT_STACK],
     ["--font-mono", preferences.code, DEFAULT_CODE_FONT_STACK],
-    ["--font-composer", preferences.separate ? preferences.composer : "", "var(--font-sans)"],
   ];
-  for (const [variable, custom, fallback] of families) {
-    const list = cssFontFamilies(custom);
+  for (const [variable, custom, defaultStack] of stacks) {
+    const list = resolvedFontList(custom, fallbackList, defaultStack);
     if (list === null) {
       root.style.removeProperty(variable);
     } else {
-      root.style.setProperty(variable, `${list}, ${fallback}`);
+      root.style.setProperty(variable, list);
     }
   }
 
+  const composerList = preferences.separate ? cssFontFamilies(preferences.composer) : null;
+  if (composerList === null) {
+    root.style.removeProperty("--font-composer");
+  } else {
+    root.style.setProperty(
+      "--font-composer",
+      fallbackList === null
+        ? `${composerList}, var(--font-sans)`
+        : `${composerList}, ${fallbackList}, var(--font-sans)`,
+    );
+  }
+
   const markerWidth = probeWidth(
-    appearanceFontStack(preferences.sans, DEFAULT_SANS_FONT_STACK),
+    appearanceFontStack(preferences.sans, DEFAULT_SANS_FONT_STACK, preferences.fallback),
     LIST_MARKER_PROBE_TEXT,
   );
   if (markerWidth === null) {

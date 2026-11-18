@@ -89,6 +89,7 @@ export const ChatHeader = memo(function ChatHeader({
   const activeProjectName = activeProject?.isScratch ? gt("No project") : activeProject?.title;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
   const interfaceFont = useClientSettings((settings) => settings.fontFamilySans);
+  const interfaceFontFallback = useClientSettings((settings) => settings.fontFamilyFallback);
   const breadcrumbContainerRef = useRef<HTMLDivElement>(null);
   const [collapseParentTitle, setCollapseParentTitle] = useState(false);
   const activeThreadRef = scopeThreadRef(activeThreadEnvironmentId, activeThreadId);
@@ -158,6 +159,7 @@ export const ChatHeader = memo(function ChatHeader({
     activeThreadTitle,
     parentThreadLink,
     interfaceFont,
+    interfaceFontFallback,
     isRenamingTitle,
   ]);
   const renameCommittedRef = useRef(false);

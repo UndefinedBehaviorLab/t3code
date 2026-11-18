@@ -34,8 +34,8 @@ const TERMINAL_GLYPH_FALLBACKS =
 // The platform's own monospace faces; concrete names only, because an
 // unknown keyword (like ui-monospace) makes canvas font shorthand parsing
 // reject the whole string.
-const DEFAULT_TERMINAL_FONT_FAMILY =
-  '"SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", ' + TERMINAL_GLYPH_FALLBACKS;
+const PLATFORM_TERMINAL_FONT_FAMILY =
+  '"SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono"';
 const CONTENT_PADDING = 4;
 const MIN_SCROLLBAR_THUMB_HEIGHT = 18;
 const CURSOR_BLINK_INTERVAL_MS = 500;
@@ -52,6 +52,8 @@ const TERMINAL_FONT_LOAD_VARIANTS = [
 
 export interface GhosttyTerminalFont {
   readonly family?: string;
+  /** Used only for characters the primary family lacks, such as CJK. */
+  readonly fallback?: string;
   readonly size?: number;
 }
 
@@ -82,20 +84,23 @@ function quoteTerminalFontFamilies(list: string): string {
     .join(", ");
 }
 
-function uncheckedTerminalFontFamily(family?: string): string {
+function uncheckedTerminalFontFamily(family?: string, fallback?: string): string {
   const custom = family === undefined ? "" : quoteTerminalFontFamilies(family);
-  return custom.length === 0
-    ? DEFAULT_TERMINAL_FONT_FAMILY
-    : `${custom}, ${TERMINAL_GLYPH_FALLBACKS}`;
+  const fallbackList = fallback === undefined ? "" : quoteTerminalFontFamilies(fallback);
+  const primary = custom.length === 0 ? PLATFORM_TERMINAL_FONT_FAMILY : custom;
+  return fallbackList.length === 0
+    ? `${primary}, ${TERMINAL_GLYPH_FALLBACKS}`
+    : `${primary}, ${fallbackList}, ${TERMINAL_GLYPH_FALLBACKS}`;
 }
 
-function terminalFontFamily(family?: string): string {
+function terminalFontFamily(family?: string, fallback?: string): string {
   // Quote non-ident names ("3270 Nerd Font", "M+ 1m"): an unquoted one makes
   // the whole canvas font string invalid and the assignment silently no-ops.
   const custom = family === undefined ? "" : quoteTerminalFontFamilies(family);
-  if (custom.length === 0) return DEFAULT_TERMINAL_FONT_FAMILY;
-  if (!isMonospaceFamily(custom)) return DEFAULT_TERMINAL_FONT_FAMILY;
-  return uncheckedTerminalFontFamily(custom);
+  if (custom.length === 0 || !isMonospaceFamily(custom)) {
+    return uncheckedTerminalFontFamily(undefined, fallback);
+  }
+  return uncheckedTerminalFontFamily(custom, fallback);
 }
 
 async function loadTerminalFontFamily(
@@ -103,10 +108,11 @@ async function loadTerminalFontFamily(
   size: number,
   environment?: {
     readonly load: (font: string, text: string) => Promise<unknown>;
-    readonly resolve: (family: string | undefined) => string;
+    readonly resolve: (family: string | undefined, fallback?: string) => string;
   },
+  fallback?: string,
 ): Promise<string> {
-  const candidate = uncheckedTerminalFontFamily(family);
+  const candidate = uncheckedTerminalFontFamily(family, fallback);
   const load =
     environment?.load ?? ((font: string, text: string) => document.fonts.load(font, text));
   try {
@@ -116,7 +122,7 @@ async function loadTerminalFontFamily(
       ),
     );
   } catch {}
-  return (environment?.resolve ?? terminalFontFamily)(family);
+  return (environment?.resolve ?? terminalFontFamily)(family, fallback);
 }
 
 function terminalFontSize(size?: number): number {
@@ -566,6 +572,7 @@ export class GhosttyTerminalSurface {
   private metrics: GhosttyCellMetrics;
   private fontFamily: string;
   private requestedFontFamily: string | undefined;
+  private requestedFontFallback: string | undefined;
   private fontSize: number;
   private fontEpoch = 0;
   private pendingFontEpoch: number | null = null;
@@ -682,6 +689,7 @@ export class GhosttyTerminalSurface {
     this.theme = options.theme;
     this.fontFamily = fontFamily;
     this.requestedFontFamily = options.font?.family;
+    this.requestedFontFallback = options.font?.fallback;
     this.fontSize = terminalFontSize(options.font?.size);
     this.installEvents();
     // The input is mounted before the core loads, so focus can land before the listeners.
@@ -733,7 +741,12 @@ export class GhosttyTerminalSurface {
       // Load bundled fonts before measuring; fallback metrics would size the wrong grid.
       await ensureTerminalSymbolsFont();
     } catch {}
-    const fontFamily = await loadTerminalFontFamily(options.font?.family, fontSize);
+    const fontFamily = await loadTerminalFontFamily(
+      options.font?.family,
+      fontSize,
+      undefined,
+      options.font?.fallback,
+    );
     const metrics = measureGhosttyCell(context, fontSize, fontFamily);
     const grid = terminalGridSize(mount.clientWidth, mount.clientHeight, metrics, CONTENT_PADDING);
     const core = await GhosttyTerminalCore.create(
@@ -827,11 +840,17 @@ export class GhosttyTerminalSurface {
     // Commit fields with loaded metrics; the epoch makes the newest overlapping call win.
     const epoch = ++this.fontEpoch;
     this.pendingFontEpoch = epoch;
-    const fontFamily = await loadTerminalFontFamily(font.family, fontSize);
+    const fontFamily = await loadTerminalFontFamily(
+      font.family,
+      fontSize,
+      undefined,
+      font.fallback,
+    );
     if (this.disposed || epoch !== this.fontEpoch) return;
     this.pendingFontEpoch = null;
     this.fontFamily = fontFamily;
     this.requestedFontFamily = font.family;
+    this.requestedFontFallback = font.fallback;
     this.fontSize = fontSize;
     this.applyFontMetrics();
   }
@@ -858,7 +877,7 @@ export class GhosttyTerminalSurface {
     if (this.disposed) return;
     // Explicit loads validate and apply the newest request; ignore their events for the old face.
     if (this.pendingFontEpoch !== null) return;
-    const fontFamily = terminalFontFamily(this.requestedFontFamily);
+    const fontFamily = terminalFontFamily(this.requestedFontFamily, this.requestedFontFallback);
     if (fontFamily !== this.fontFamily) {
       this.fontFamily = fontFamily;
       this.applyFontMetrics();

@@ -445,6 +445,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: [msg("typography family size monospace output")],
   },
   {
+    id: "fallback-font",
+    title: "Fallback font",
+    to: "/settings/appearance",
+    searchTerms: ["typography cjk chinese japanese korean missing glyphs unicode fallback"],
+  },
+  {
     id: "separate-fonts",
     title: msg("Separate fonts"),
     to: "/settings/appearance",
