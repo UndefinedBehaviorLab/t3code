@@ -345,6 +345,32 @@ export function AppearanceSettingsPanel() {
         />
         <ThreadDetailsItemsRow />
         <SettingsRow
+          {...searchableSetting("pi-extension-status")}
+          description={gt("Show status text published by Pi extensions above the composer.")}
+          resetAction={
+            settings.piExtensionStatusEnabled !==
+            DEFAULT_UNIFIED_SETTINGS.piExtensionStatusEnabled ? (
+              <SettingResetButton
+                ariaLabel={gt("Reset Pi extension status to default")}
+                onClick={() =>
+                  updateSettings({
+                    piExtensionStatusEnabled: DEFAULT_UNIFIED_SETTINGS.piExtensionStatusEnabled,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.piExtensionStatusEnabled}
+              onCheckedChange={(checked) =>
+                updateSettings({ piExtensionStatusEnabled: Boolean(checked) })
+              }
+              aria-label={gt("Show Pi extension status")}
+            />
+          }
+        />
+        <SettingsRow
           {...searchableSetting("effort-display")}
           description={gt(
             "Show reasoning effort in the composer as its name, such as High, or as bars.",
