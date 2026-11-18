@@ -23,6 +23,10 @@
   cacert,
   src,
   version,
+  # T3 Connect needs public identifiers baked in at build time. The values below
+  # are the ones `.env.example` documents and release builds ship; they are not
+  # secrets. Set to false to build with cloud features disabled.
+  connectPublicConfig ? true,
   pnpmDepsHash ? lib.fakeHash,
 }:
 
@@ -108,6 +112,15 @@ stdenv.mkDerivation (
       # pnpm otherwise detects the package version updates below as
       # dependency drift and runs another install, including lifecycle scripts.
       export pnpm_config_verify_deps_before_run=false
+
+      # loadRepoEnv() merges process env over .env, and the vite configs bake
+      # these into the server, web, and desktop bundles as build defines.
+      ${lib.optionalString connectPublicConfig ''
+        export T3CODE_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsudDMuY29kZXMk
+        export T3CODE_CLERK_JWT_TEMPLATE=t3-relay
+        export T3CODE_CLERK_CLI_OAUTH_CLIENT_ID=hzxSgY2cH10sDU2r
+        export T3CODE_RELAY_URL=https://relay.t3.codes
+      ''}
 
       node scripts/update-release-package-versions.ts ${finalAttrs.version}
 
