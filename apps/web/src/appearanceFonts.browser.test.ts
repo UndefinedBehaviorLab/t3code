@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import "~/index.css";
-import { applyAppearanceFontVariables } from "./appearanceFonts";
+import {
+  applyAppearanceFontVariables,
+  DEFAULT_CODE_FONT_STACK,
+  DEFAULT_SANS_FONT_STACK,
+} from "./appearanceFonts";
 
 function renderedFontSize(style: (probe: HTMLElement) => void): string {
   const probe = document.createElement("div");
@@ -33,6 +37,7 @@ describe("applyAppearanceFontVariables", () => {
       sans: "",
       code: "",
       composer: "",
+      fallback: "",
       sizeInterface: 20,
       sizePrompt: 14,
       sizeCode: 13,
@@ -61,6 +66,7 @@ describe("applyAppearanceFontVariables", () => {
         sans,
         code: "",
         composer: "",
+        fallback: "",
         sizeInterface: 16,
         sizePrompt: 14,
         sizeCode: 13,
@@ -83,6 +89,45 @@ describe("applyAppearanceFontVariables", () => {
       // `0. ` in a 14px monospace font is about 25px, past the 20px default.
       expect(gutter("monospace")).toBeGreaterThan(24);
       expect(gutter("sans-serif")).toBe(20);
+    } finally {
+      if (style === null) root.removeAttribute("style");
+      else root.setAttribute("style", style);
+    }
+  });
+
+  it("keeps the fallback behind the selected families and ahead of the generic default", () => {
+    const root = document.documentElement;
+    const style = root.getAttribute("style");
+    const preferences = {
+      sans: "",
+      code: "",
+      composer: "Fira Code",
+      fallback: "Noto Sans SC",
+      sizeInterface: 16,
+      sizePrompt: 14,
+      sizeCode: 13,
+      smoothing: true,
+      separate: true,
+    };
+    try {
+      applyAppearanceFontVariables(root, preferences);
+      expect(root.style.getPropertyValue("--font-sans")).toBe(
+        DEFAULT_SANS_FONT_STACK.replace(/, sans-serif$/, ', "Noto Sans SC", sans-serif'),
+      );
+      expect(root.style.getPropertyValue("--font-mono")).toBe(
+        DEFAULT_CODE_FONT_STACK.replace(/, monospace$/, ', "Noto Sans SC", monospace'),
+      );
+      expect(root.style.getPropertyValue("--font-composer")).toBe(
+        '"Fira Code", "Noto Sans SC", var(--font-sans)',
+      );
+
+      applyAppearanceFontVariables(root, { ...preferences, sans: "Inter", code: "JetBrains Mono" });
+      expect(root.style.getPropertyValue("--font-sans")).toBe(
+        `Inter, "Noto Sans SC", ${DEFAULT_SANS_FONT_STACK}`,
+      );
+      expect(root.style.getPropertyValue("--font-mono")).toBe(
+        `"JetBrains Mono", "Noto Sans SC", ${DEFAULT_CODE_FONT_STACK}`,
+      );
     } finally {
       if (style === null) root.removeAttribute("style");
       else root.setAttribute("style", style);

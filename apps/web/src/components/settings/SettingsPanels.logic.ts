@@ -85,6 +85,7 @@ type TypographySettings = Pick<
   | "fontFamilyComposer"
   | "fontFamilyCode"
   | "fontFamilyTerminal"
+  | "fontFamilyFallback"
   | "fontSizeInterface"
   | "fontSizePrompt"
   | "fontSizeCode"
@@ -111,6 +112,9 @@ export function getChangedTypographySettingLabels(
     ...(settings.fontFamilyTerminal !== DEFAULT_UNIFIED_SETTINGS.fontFamilyTerminal ||
     settings.fontSizeTerminal !== DEFAULT_UNIFIED_SETTINGS.fontSizeTerminal
       ? [resolve(msg("Terminal font"))]
+      : []),
+    ...(settings.fontFamilyFallback !== DEFAULT_UNIFIED_SETTINGS.fontFamilyFallback
+      ? ["Fallback font"]
       : []),
   ];
 }

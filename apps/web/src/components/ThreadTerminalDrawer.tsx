@@ -323,9 +323,18 @@ function readThemeColor(styles: CSSStyleDeclaration, variable: string, fallback:
   return normalizeComputedColor(styles.getPropertyValue(variable), fallback);
 }
 
-function terminalFontOptions(family: string, size: number): { family?: string; size: number } {
+function terminalFontOptions(
+  family: string,
+  size: number,
+  fallback: string,
+): { family?: string; fallback?: string; size: number } {
   const trimmed = family.trim();
-  return trimmed.length > 0 ? { family: trimmed, size } : { size };
+  const trimmedFallback = fallback.trim();
+  return {
+    ...(trimmed.length > 0 ? { family: trimmed } : {}),
+    ...(trimmedFallback.length > 0 ? { fallback: trimmedFallback } : {}),
+    size,
+  };
 }
 
 export function terminalThemeFromApp(mountElement?: HTMLElement | null): GhosttyTheme {
@@ -614,7 +623,12 @@ function TerminalSessionViewport({
       terminal: settings.fontSizeTerminal,
     }),
   );
-  const terminalFontRef = useRef({ family: terminalFontFamily, size: terminalFontSize });
+  const terminalFontFallback = useClientSettings((settings) => settings.fontFamilyFallback);
+  const terminalFontRef = useRef({
+    family: terminalFontFamily,
+    size: terminalFontSize,
+    fallback: terminalFontFallback,
+  });
   // Keyed by the launch (see TerminalViewport), so the atom is fixed for this surface.
   const terminalSessionAtom = attachedTerminalSessionAtom(environmentId, {
     threadId,
@@ -709,10 +723,22 @@ function TerminalSessionViewport({
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- applies font family and size changes to the live Ghostty terminal surface
   useEffect(() => {
     const current = terminalFontRef.current;
-    if (current.family === terminalFontFamily && current.size === terminalFontSize) return;
-    terminalFontRef.current = { family: terminalFontFamily, size: terminalFontSize };
-    void terminalRef.current?.setFont(terminalFontOptions(terminalFontFamily, terminalFontSize));
-  }, [terminalFontFamily, terminalFontSize]);
+    if (
+      current.family === terminalFontFamily &&
+      current.size === terminalFontSize &&
+      current.fallback === terminalFontFallback
+    ) {
+      return;
+    }
+    terminalFontRef.current = {
+      family: terminalFontFamily,
+      size: terminalFontSize,
+      fallback: terminalFontFallback,
+    };
+    void terminalRef.current?.setFont(
+      terminalFontOptions(terminalFontFamily, terminalFontSize, terminalFontFallback),
+    );
+  }, [terminalFontFamily, terminalFontSize, terminalFontFallback]);
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- creates the Ghostty terminal in the mount node and subscribes it to the terminal session
   useEffect(() => {
@@ -729,7 +755,7 @@ function TerminalSessionViewport({
       const setupFont = terminalFontRef.current;
       const terminalOptions = withLiveVisibility(visibleRef, {
         theme: terminalThemeFromApp(mount),
-        font: terminalFontOptions(setupFont.family, setupFont.size),
+        font: terminalFontOptions(setupFont.family, setupFont.size, setupFont.fallback),
         onData: (data) => handleData(data),
         onBinary: (data) => void sendTerminalInput(data, m(msg("Terminal write failed")), "binary"),
         onReply: (data) => void sendTerminalInput(data, m(msg("Terminal write failed")), "reply"),
@@ -759,8 +785,14 @@ function TerminalSessionViewport({
       terminal.input.readOnly = !hasTerminalWriteAccess();
       // Reapply font settings hydrated during loading, when terminalRef was null.
       const currentFont = terminalFontRef.current;
-      if (currentFont.family !== setupFont.family || currentFont.size !== setupFont.size) {
-        void terminal.setFont(terminalFontOptions(currentFont.family, currentFont.size));
+      if (
+        currentFont.family !== setupFont.family ||
+        currentFont.size !== setupFont.size ||
+        currentFont.fallback !== setupFont.fallback
+      ) {
+        void terminal.setFont(
+          terminalFontOptions(currentFont.family, currentFont.size, currentFont.fallback),
+        );
       }
       const latestSession = readTerminalSession();
       terminal.setSharedGrid(latestSession.grid);
