@@ -427,9 +427,9 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "fallback-font",
-    title: "Fallback font",
+    title: msg("Fallback font"),
     to: "/settings/appearance",
-    searchTerms: ["typography cjk chinese japanese korean missing glyphs unicode fallback"],
+    searchTerms: [msg("typography cjk chinese japanese korean missing glyphs unicode fallback")],
   },
   {
     id: "separate-fonts",
@@ -454,6 +454,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "composer-context",
     title: msg("Composer context"),
     to: "/settings/appearance",
+  },
+  {
+    id: "pi-extension-status",
+    title: msg("Pi extension status"),
+    to: "/settings/appearance",
+    searchTerms: [msg("pi extension status banner lsp checkpoint composer")],
   },
   {
     id: "project-grouping",

@@ -597,6 +597,9 @@ export default function ChatView(props: ChatViewProps) {
   })();
   const settings = useEnvironmentSettings(environmentId);
   const clientSettingsHydrated = useClientSettingsHydrated();
+  const showPiExtensionStatus = useClientSettings(
+    (clientSettings) => clientSettings.piExtensionStatusEnabled,
+  );
   const timestampFormat = settings.timestampFormat;
   const navigate = useNavigate();
   // Selects primitives: an object here is new on every router store update, which
@@ -2699,9 +2702,9 @@ export default function ChatView(props: ChatViewProps) {
           ]
         : [];
     const limitRecoveryItems = limitRecoveryBanner === null ? [] : [limitRecoveryBanner];
-    const extensionStatusBanner = extensionStatusBannerItem(
-      deriveProviderExtensionStatuses(serverProjection),
-    );
+    const extensionStatusBanner = showPiExtensionStatus
+      ? extensionStatusBannerItem(deriveProviderExtensionStatuses(serverProjection))
+      : null;
     const extensionStatusItems = extensionStatusBanner === null ? [] : [extensionStatusBanner];
     const usageLimitsItems = usageLimitsBanner === null ? [] : [usageLimitsBanner];
     const projectCloneItems = projectCloneBannerItem === null ? [] : [projectCloneBannerItem];

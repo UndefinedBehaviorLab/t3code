@@ -355,12 +355,17 @@ function SimpleFontRows() {
 }
 
 function FallbackFontRow() {
+  const gt = useGT();
+  const searchableSetting = useSearchableSetting();
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
   return (
     <FontFamilySettingsRow
       {...searchableSetting("fallback-font")}
-      description="Only for characters the fonts above do not include, such as CJK. It never replaces their glyphs."
+      resetLabel={gt("Reset fallback font to default")}
+      description={gt(
+        "Only for characters the fonts above do not include, such as CJK. It never replaces their glyphs.",
+      )}
       defaultFamily="None"
       defaultValue={DEFAULT_UNIFIED_SETTINGS.fontFamilyFallback}
       value={settings.fontFamilyFallback}
