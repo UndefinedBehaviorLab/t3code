@@ -9,6 +9,10 @@ nix build .#default            # ./result/bin/{t3,t3code-desktop}
 nix build .#default -L         # full build log
 ```
 
+T3 Connect (relay login and tunnels) needs public identifiers baked in at build time; the package
+exports the values `.env.example` documents, so the build talks to the production relay like the
+official ones. `connectPublicConfig = false` drops them and keeps cloud commands disabled.
+
 `version` follows `apps/desktop/package.json`. `enableResourceMonitor` defaults to `false` here
 because the Rust sidecar vendors crates from crates.io inside the build sandbox, which times out
 on some networks; turn it on with `pkgs.t3code.override { enableResourceMonitor = true; }` after
