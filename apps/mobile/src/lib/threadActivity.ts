@@ -2494,6 +2494,38 @@ function firstChangedIndex<T>(previous: ReadonlyArray<T>, next: ReadonlyArray<T>
   return index;
 }
 
+function isToolExecutionItem(item: OrchestrationV2TurnItem | undefined): boolean {
+  switch (item?.type) {
+    case "command_execution":
+    case "file_change":
+    case "file_search":
+    case "web_search":
+    case "dynamic_tool":
+    case "subagent":
+    case "approval_request":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * DeepSeek-backed agents send "." as assistant text on tool-call turns so the
+ * provider sees non-empty content alongside the calls. Drop that protocol
+ * placeholder only when a tool call follows, leaving a deliberate "." answer.
+ */
+function isToolCallPlaceholderReply(
+  item: OrchestrationV2TurnItem,
+  next: OrchestrationV2TurnItem | undefined,
+): boolean {
+  return (
+    item.type === "assistant_message" &&
+    item.text.trim() === "." &&
+    (item.attachments?.length ?? 0) === 0 &&
+    isToolExecutionItem(next)
+  );
+}
+
 export function buildThreadFeed(
   visibleTurnItems: ReadonlyArray<OrchestrationV2ProjectedTurnItem>,
   options?: {
@@ -2583,6 +2615,7 @@ export function buildThreadFeed(
   for (let index = restart?.row ?? 0; index < visibleTurnItems.length; index += 1) {
     const row = visibleTurnItems[index]!;
     const item = row.item;
+    if (isToolCallPlaceholderReply(item, visibleTurnItems[index + 1]?.item)) continue;
     if (turnItemIsWorkspacePreparation(item) && !item.deferredWork) continue;
     if (item.type === "todo_list" || item.type === "checkpoint") continue;
     if (

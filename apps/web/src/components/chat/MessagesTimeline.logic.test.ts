@@ -128,6 +128,49 @@ describe("deriveMessagesTimelineRows", () => {
     expect(reply).toMatchObject({ suppressEmptyResponse: expected });
   });
 
+  it("hides lone-dot tool acknowledgements without hiding a deliberate period", () => {
+    const at = "2026-11-20T00:00:00Z";
+    const runId = RunId.make("tool-run");
+    const dotMessage = (id: string): TimelineEntry => ({
+      kind: "message",
+      id,
+      createdAt: at,
+      message: {
+        id: MessageId.make(id),
+        role: "assistant",
+        runId,
+        text: ".",
+        streaming: false,
+        createdAt: at,
+        updatedAt: at,
+      },
+    });
+    const tool: TimelineEntry = {
+      kind: "work",
+      id: "tool",
+      createdAt: at,
+      entry: {
+        id: "tool",
+        runId,
+        createdAt: at,
+        label: "Ran command",
+        tone: "tool",
+        toolLifecycleStatus: "completed",
+      },
+    };
+    const rows = deriveMessagesTimelineRows({
+      timelineEntries: [dotMessage("ack"), tool, dotMessage("reply")],
+      latestRun: null,
+      isWorking: false,
+      activeTurnStartedAt: null,
+      turnDiffSummaries: [],
+      supportsConversationRollback: false,
+    });
+
+    expect(rows.some((row) => row.kind === "message" && row.id === "ack")).toBe(false);
+    expect(rows.some((row) => row.kind === "message" && row.id === "reply")).toBe(true);
+  });
+
   it.each(["alone", "before tool", "before commentary and tool"])(
     "keeps an unfinished task update static %s",
     (placement) => {

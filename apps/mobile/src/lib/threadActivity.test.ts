@@ -380,6 +380,28 @@ it("binds a persisted resume answer only to the next compaction in its run", () 
   }
 });
 
+it("hides lone-dot tool acknowledgements without hiding a deliberate period", () => {
+  const dot = (id: string, position: number) =>
+    projected(
+      {
+        ...assistantMessage(`2026-06-20T00:00:0${position + 1}.000Z`),
+        id: TurnItemId.make(id),
+        messageId: MessageId.make(id),
+        text: ".",
+      },
+      position,
+    );
+  const feed = buildThreadFeed([
+    dot("ack", 0),
+    projected(command("2026-06-20T00:00:02.000Z"), 1),
+    dot("reply", 2),
+  ]);
+  const messageIds = feed.flatMap((entry) => (entry.type === "message" ? [entry.message.id] : []));
+
+  expect(messageIds).not.toContain(MessageId.make("ack"));
+  expect(messageIds).toContain(MessageId.make("reply"));
+});
+
 function base(id: string, updatedAt: string, ordinal: number) {
   const timestamp = DateTime.makeUnsafe(updatedAt);
   return {

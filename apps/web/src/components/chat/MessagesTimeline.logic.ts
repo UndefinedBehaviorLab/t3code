@@ -1526,6 +1526,34 @@ function runningSubagentsAtRunTail(entries: ReadonlyArray<TimelineEntry>, runId:
   return running;
 }
 
+/**
+ * DeepSeek-backed agents send "." as assistant text on tool-call turns so the
+ * provider sees non-empty content alongside the calls. Drop that protocol
+ * placeholder only when a tool call follows, leaving a deliberate "." answer.
+ */
+function isToolCallPlaceholderReply(
+  entry: TimelineEntry,
+  next: TimelineEntry | undefined,
+): boolean {
+  if (
+    entry.kind !== "message" ||
+    entry.message.role !== "assistant" ||
+    entry.message.text.trim() !== "." ||
+    (entry.message.attachments?.length ?? 0) > 0
+  ) {
+    return false;
+  }
+  return (
+    next?.kind === "work" && next.entry.tone !== "thinking" && workLogEntryIsToolLike(next.entry)
+  );
+}
+
+function withoutToolCallPlaceholderReplies(
+  entries: ReadonlyArray<TimelineEntry>,
+): ReadonlyArray<TimelineEntry> {
+  return entries.filter((entry, index) => !isToolCallPlaceholderReply(entry, entries[index + 1]));
+}
+
 function timelineRowEntries(
   input: Pick<
     MessagesTimelineRowsInput,
@@ -1539,7 +1567,7 @@ function timelineRowEntries(
   >,
 ) {
   const visibility = input.toolCallVisibility ?? "showAll";
-  const entries = input.timelineEntries;
+  const entries = withoutToolCallPlaceholderReplies(input.timelineEntries);
   let shown = entries;
   if (visibility === "zen") {
     const answering = input.isWorking && input.latestRun?.turnEnded !== true;
