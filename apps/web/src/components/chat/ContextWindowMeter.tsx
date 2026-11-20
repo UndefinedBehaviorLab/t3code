@@ -1,9 +1,10 @@
 import type { ContextWindowSnapshot } from "@t3tools/client-runtime/state/context-window";
-import { useGT, useLocale } from "gt-react";
+import { useGT, useLocale, useMessages } from "gt-react";
 
 import { formatContextWindowTokens } from "../../lib/contextWindow";
 import { cn } from "../../lib/utils";
 import { ComposerControl } from "./ComposerControl";
+import { formatContextWindowCompactionMessage } from "./compaction.logic";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 const RING_SIZE = 20;
@@ -32,7 +33,9 @@ function formatCost(cost: NonNullable<ContextWindowSnapshot["cost"]>, locale: st
 export function ContextWindowMeter({ usage }: { readonly usage: ContextWindowSnapshot }) {
   const gt = useGT();
   const locale = useLocale();
+  const m = useMessages();
   const maxTokens = usage.maxTokens != null && usage.maxTokens > 0 ? usage.maxTokens : null;
+  const threshold = usage.autoCompactThreshold ?? null;
   const usedPercent =
     usage.usedPercentage === null ? null : Math.max(0, Math.min(100, usage.usedPercentage));
   const roundedPercent = usedPercent === null ? null : Math.round(usedPercent);
@@ -111,6 +114,11 @@ export function ContextWindowMeter({ usage }: { readonly usage: ContextWindowSna
                 used: usedTokens,
                 max: formatContextWindowTokens(maxTokens),
               })}
+            </span>
+          ) : null}
+          {threshold !== null && threshold > 0 ? (
+            <span className="text-muted-foreground">
+              {formatContextWindowCompactionMessage(threshold, m)}
             </span>
           ) : null}
           {cost !== null ? (
