@@ -239,6 +239,8 @@ import {
   submitComposerDraft,
 } from "./composerSubmission";
 import { ComposerPromptLengthValidation } from "./ComposerPromptLengthValidation";
+import { ContextWindowMeter } from "./ContextWindowMeter";
+import type { ContextWindowSnapshot } from "@t3tools/client-runtime/state/context-window";
 import { pendingDraftWork } from "./pendingDraftWork";
 import { importComposerThreadAttachment } from "./composerThreadImport";
 import { observeResize } from "~/lib/observeResize";
@@ -392,6 +394,8 @@ export interface ChatComposerProps {
   canSteer: boolean;
   bannerItems: readonly ComposerBannerStackItem[];
   resumeCompactionTokens: number | null;
+  /** The active thread's context window; null in drafts and before the provider reports one. */
+  contextWindow: ContextWindowSnapshot | null;
   keepFullHistory: boolean;
   onToggleKeepFullHistory: () => void;
   onUsageLimitsCommand?: (() => void) | undefined;
@@ -3833,6 +3837,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     )}
                   >
                     {composerControls}
+                    {props.contextWindow ? (
+                      <ContextWindowMeter usage={props.contextWindow} />
+                    ) : null}
                   </div>
                   <ComposerFooterPrimaryActions
                     // Stop state belongs to one thread; the composer stays mounted across threads.
