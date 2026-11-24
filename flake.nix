@@ -16,7 +16,7 @@
     version = (nixpkgs.lib.importJSON ./apps/desktop/package.json).version;
     # Same value nixpkgs pins for v0.1.6; recompute (fakeHash, read `got:`) after a
     # lockfile change.
-    pnpmDepsHash = "sha256-s/vm8Ox4o/AYpNC/amYP1KFWwh7SY5bCmVBuIJn9f/c=";
+    pnpmDepsHash = "sha256-2WaOGiNimJYGQTfFt8ZlCrY8sO2uv+x9M1Zg2aXlpA8=";
   in {
     packages = nixpkgs.lib.genAttrs systems (
       system: let
