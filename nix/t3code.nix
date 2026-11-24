@@ -72,6 +72,25 @@ let
       "--set-default"
       "T3CODE_RESOURCE_MONITOR_PATH"
       (lib.getExe t3code-resource-monitor)
+    ]
+    # Product analytics (PostHog, via ingest.t3.codes) is on by default in the
+    # upstream source: `AnalyticsService` reads `T3CODE_TELEMETRY_ENABLED` with
+    # `Config.withDefault(true)`. Set it here so every binary in this package
+    # starts with it off.
+    #
+    # `--set` and not `--set-default`: with the latter a `T3CODE_TELEMETRY_ENABLED=true`
+    # left in a shell profile wins. The desktop app spawns the server child with
+    # `extendEnv: true`, so this value reaches the process that actually sends.
+    # This also turns off relay OTLP tracing (`isRelayTracingEnabled` reads the
+    # same flag); local OTLP export to your own collector (`T3CODE_OTLP_*`) is a
+    # different path and stays untouched.
+    #
+    # Kept outside the optionals above on purpose: `wrapperArgs` being empty would
+    # skip `postBuild` entirely and silently drop this.
+    ++ [
+      "--set"
+      "T3CODE_TELEMETRY_ENABLED"
+      "false"
     ];
 
 in

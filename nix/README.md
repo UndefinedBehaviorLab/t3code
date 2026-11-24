@@ -11,7 +11,14 @@ nix build .#default -L         # full build log
 
 T3 Connect (relay login and tunnels) needs public identifiers baked in at build time; the package
 exports the values `.env.example` documents, so the build talks to the production relay like the
-official ones. `connectPublicConfig = false` drops them and keeps cloud commands disabled.
+official ones. `connectPublicConfig = false` drops them and keeps cloud commands disabled — that
+is the default here, because this fork must not reach the production relay; pass
+`.override { connectPublicConfig = true; }` to bake them back in.
+
+Product analytics is turned off too: the wrapper sets `T3CODE_TELEMETRY_ENABLED=false` with
+`--set` (not `--set-default`, so a shell profile cannot switch it back on), and
+`apps/server/src/telemetry/AnalyticsService.ts` defaults the flag to `false`. Local OTLP export to
+your own collector (`T3CODE_OTLP_*`) is a separate path and still works.
 
 `version` follows `apps/desktop/package.json`. `enableResourceMonitor` defaults to `false` here
 because the Rust sidecar vendors crates from crates.io inside the build sandbox, which times out

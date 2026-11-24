@@ -23,10 +23,15 @@
   cacert,
   src,
   version,
-  # T3 Connect needs public identifiers baked in at build time. The values below
-  # are the ones `.env.example` documents and release builds ship; they are not
-  # secrets. Set to false to build with cloud features disabled.
-  connectPublicConfig ? true,
+  # T3 Connect needs public identifiers baked in at build time (relay URL, Clerk
+  # publishable key, CLI OAuth client id). This fork does not want the production
+  # relay reachable from a local build, so they default to OFF; override with
+  # `.override { connectPublicConfig = true; }` if cloud features are ever wanted.
+  #
+  # Leaving them out makes `relayUrlConfig` fail (`relay-url-unconfigured`), which
+  # `t3 connect *` reports and the boot path skips via `Effect.option`, and the web
+  # app renders "T3CODE_RELAY_URL is not configured" instead of a Connect panel.
+  connectPublicConfig ? false,
   pnpmDepsHash ? lib.fakeHash,
 }:
 
