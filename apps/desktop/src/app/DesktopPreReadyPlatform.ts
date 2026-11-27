@@ -164,6 +164,15 @@ export const make = Effect.gen(function* () {
       if (linux.passwordStore !== null && linuxPasswordStoreCommandLine === null) {
         Electron.app.commandLine.appendSwitch("password-store", linux.passwordStore);
       }
+      // `--password-store=basic` on its own leaves safeStorage unavailable on Linux: Chromium
+      // still reports the store as unavailable, so every encrypted catalog write fails. The
+      // opt-in below is what makes Electron use its built-in key, which is the only backend
+      // available on desktops that run neither gnome-keyring nor KWallet.
+      if (linux.passwordStore === "basic") {
+        try {
+          Electron.safeStorage.setUsePlainTextEncryption(true);
+        } catch {}
+      }
       // Chromium keeps only the last --disable-features value, so pass the merged list.
       const disableFeatures = DesktopEarlyElectronStartup.resolveLinuxDisableFeaturesSwitch({
         env: process.env,

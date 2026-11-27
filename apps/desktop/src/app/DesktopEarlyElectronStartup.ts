@@ -4,7 +4,9 @@ import * as Schema from "effect/Schema";
 
 import {
   DEFAULT_LINUX_PASSWORD_STORE,
+  LINUX_PASSWORD_STORE_ENV,
   normalizeLinuxPasswordStorePreference,
+  parseLinuxPasswordStorePreference,
   resolveLinuxPasswordStoreSwitch,
   type LinuxPasswordStoreSwitch,
   type LinuxPasswordStorePreference,
@@ -71,6 +73,12 @@ function resolveEarlyDesktopSettingsPath(input: {
 export function resolveEarlyLinuxPasswordStorePreference(
   input: EarlyDesktopSettingsInput,
 ): LinuxPasswordStorePreference {
+  // The environment wins: a launch wrapper can pick a backend without rewriting the
+  // settings file, which matters on desktops that never got a Secret Service.
+  const fromEnvironment = parseLinuxPasswordStorePreference(input.env[LINUX_PASSWORD_STORE_ENV]);
+  if (fromEnvironment !== undefined) {
+    return fromEnvironment;
+  }
   const settingsPath = resolveEarlyDesktopSettingsPath(input);
   try {
     const parsed = decodeEarlyDesktopSettingsJson(input.readFileString(settingsPath));

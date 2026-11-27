@@ -17,6 +17,7 @@ const {
   execFileSyncMock,
   readFileSyncMock,
   symlinkSyncMock,
+  setUsePlainTextEncryptionMock,
 } = vi.hoisted(() => ({
   appendSwitchMock: vi.fn(),
   getSwitchValueMock: vi.fn(),
@@ -29,6 +30,7 @@ const {
   execFileSyncMock: vi.fn(),
   readFileSyncMock: vi.fn(),
   symlinkSyncMock: vi.fn(),
+  setUsePlainTextEncryptionMock: vi.fn(),
 }));
 
 vi.mock("electron", () => ({
@@ -45,6 +47,9 @@ vi.mock("electron", () => ({
   },
   protocol: {
     registerSchemesAsPrivileged: registerSchemesMock,
+  },
+  safeStorage: {
+    setUsePlainTextEncryption: setUsePlainTextEncryptionMock,
   },
 }));
 
@@ -76,7 +81,42 @@ describe("DesktopPreReadyPlatform", () => {
     execFileSyncMock.mockReset();
     readFileSyncMock.mockReset().mockReturnValue("{}");
     symlinkSyncMock.mockReset();
+    setUsePlainTextEncryptionMock.mockReset();
   });
+
+  it.effect.each([
+    { store: "basic", optedIn: true },
+    { store: "gnome-libsecret", optedIn: false },
+    { store: "kwallet6", optedIn: false },
+  ])(
+    "opts into plain-text safeStorage only for the basic store (store: $store)",
+    ({ store, optedIn }) => {
+      vi.stubEnv("VITE_DEV_SERVER_URL", "");
+      vi.stubEnv("T3CODE_LINUX_PASSWORD_STORE", store);
+      getSwitchValueMock.mockReturnValue("");
+
+      return Effect.scoped(
+        Effect.gen(function* () {
+          yield* Layer.build(
+            DesktopPreReadyPlatform.layer.pipe(
+              Layer.provide(Layer.succeed(HostProcess.Platform, "linux")),
+              Layer.provide(
+                DesktopConfig.layerTest({
+                  XDG_DATA_HOME: "/xdg",
+                  APPIMAGE: "/Applications/current.AppImage",
+                }),
+              ),
+            ),
+          );
+          assert.deepEqual(
+            setUsePlainTextEncryptionMock.mock.calls,
+            optedIn ? [[true]] : [],
+            "safeStorage must only be downgraded when the user asks for the basic store",
+          );
+        }),
+      ).pipe(Effect.ensuring(Effect.sync(() => vi.unstubAllEnvs())));
+    },
+  );
 
   it.effect("persists Linux scaling synchronously across relaunches and settings rewrites", () => {
     vi.stubEnv("T3CODE_HOME", "/isolated");

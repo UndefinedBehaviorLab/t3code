@@ -1,5 +1,12 @@
+/**
+ * `basic` is Chromium's own backend name for its built-in obfuscation with a hardcoded
+ * key. It needs no Secret Service, so it is the only option that works on desktops with
+ * neither gnome-keyring nor KWallet, such as wlroots compositors. It is NOT encryption:
+ * anything stored that way is readable by anyone who can read the file.
+ */
 export type LinuxPasswordStorePreference =
   | "auto"
+  | "basic"
   | "gnome-libsecret"
   | "kwallet"
   | "kwallet5"
@@ -7,6 +14,9 @@ export type LinuxPasswordStorePreference =
 export type LinuxPasswordStoreSwitch = Exclude<LinuxPasswordStorePreference, "auto">;
 
 export const DEFAULT_LINUX_PASSWORD_STORE: LinuxPasswordStorePreference = "auto";
+
+/** Overrides the persisted preference, for launches that cannot wait for the settings file. */
+export const LINUX_PASSWORD_STORE_ENV = "T3CODE_LINUX_PASSWORD_STORE";
 
 // Chromium matches desktop names case-sensitively and stops at the first recognized value.
 const ELECTRON_LIBSECRET_DESKTOPS = new Set([
@@ -23,15 +33,23 @@ const ELECTRON_KDE_DESKTOP = "KDE";
 // Chromium recognizes LXQt and still selects basic text for it, so it does need a forced backend.
 const ELECTRON_UNPROTECTED_DESKTOPS = new Set(["LXQt"]);
 
-export function normalizeLinuxPasswordStorePreference(
+/** The preference when it names a backend this build can select, otherwise `undefined`. */
+export function parseLinuxPasswordStorePreference(
   value: unknown,
-): LinuxPasswordStorePreference {
-  return value === "gnome-libsecret" ||
+): LinuxPasswordStorePreference | undefined {
+  return value === "basic" ||
+    value === "gnome-libsecret" ||
     value === "kwallet" ||
     value === "kwallet5" ||
     value === "kwallet6"
     ? value
-    : DEFAULT_LINUX_PASSWORD_STORE;
+    : undefined;
+}
+
+export function normalizeLinuxPasswordStorePreference(
+  value: unknown,
+): LinuxPasswordStorePreference {
+  return parseLinuxPasswordStorePreference(value) ?? DEFAULT_LINUX_PASSWORD_STORE;
 }
 
 export function resolveLinuxPasswordStoreSwitch(input: {

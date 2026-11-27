@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { resolveLinuxPasswordStoreSwitch } from "./linuxSecretStorage.ts";
+import {
+  normalizeLinuxPasswordStorePreference,
+  parseLinuxPasswordStorePreference,
+  resolveLinuxPasswordStoreSwitch,
+} from "./linuxSecretStorage.ts";
 
 const autoSwitch = (env: NodeJS.ProcessEnv) =>
   resolveLinuxPasswordStoreSwitch({ preference: "auto", env });
@@ -82,5 +86,26 @@ describe("linuxSecretStorage", () => {
         KDE_SESSION_VERSION: "6",
       }),
     ).toBe("gnome-libsecret");
+  });
+
+  it("keeps the opted-in basic store regardless of the desktop name", () => {
+    expect(resolveLinuxPasswordStoreSwitch({ preference: "basic", env: {} })).toBe("basic");
+    expect(
+      resolveLinuxPasswordStoreSwitch({ preference: "basic", env: { XDG_CURRENT_DESKTOP: "KDE" } }),
+    ).toBe("basic");
+    expect(
+      resolveLinuxPasswordStoreSwitch({
+        preference: "basic",
+        env: { XDG_CURRENT_DESKTOP: "GNOME" },
+      }),
+    ).toBe("basic");
+  });
+
+  it("accepts basic as a stored preference and rejects values this build cannot select", () => {
+    expect(parseLinuxPasswordStorePreference("basic")).toBe("basic");
+    expect(normalizeLinuxPasswordStorePreference("basic")).toBe("basic");
+    expect(normalizeLinuxPasswordStorePreference("kwallet7")).toBe("auto");
+    expect(normalizeLinuxPasswordStorePreference("auto")).toBe("auto");
+    expect(normalizeLinuxPasswordStorePreference(undefined)).toBe("auto");
   });
 });

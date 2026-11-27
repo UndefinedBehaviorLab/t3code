@@ -52,6 +52,28 @@ describe("DesktopEarlyElectronStartup", () => {
     assert.equal(preference, "auto");
   });
 
+  it("lets the environment override the persisted linux password-store preference", () => {
+    const preference = resolveEarlyLinuxPasswordStorePreference({
+      env: { T3CODE_HOME: "/home/user/.t3-test", T3CODE_LINUX_PASSWORD_STORE: "basic" },
+      homeDirectory: "/home/user",
+      joinPath,
+      readFileString: () => JSON.stringify({ linuxPasswordStore: "kwallet6" }),
+    });
+
+    assert.equal(preference, "basic");
+  });
+
+  it("ignores an environment value this build cannot select", () => {
+    const preference = resolveEarlyLinuxPasswordStorePreference({
+      env: { T3CODE_HOME: "/home/user/.t3-test", T3CODE_LINUX_PASSWORD_STORE: "keychain" },
+      homeDirectory: "/home/user",
+      joinPath,
+      readFileString: () => JSON.stringify({ linuxPasswordStore: "kwallet6" }),
+    });
+
+    assert.equal(preference, "kwallet6");
+  });
+
   describe("resolveLinuxDisableFeaturesSwitch", () => {
     const hyprland = { XDG_CURRENT_DESKTOP: "Hyprland", XDG_SESSION_TYPE: "wayland" };
     const releaseCommits: Record<string, string> = {
