@@ -26,8 +26,9 @@ setting you are editing, the layers icon counts them and the chain lists each on
 click a project to jump to it, or **Reset all** to make those projects follow the environment
 again.
 
-Providers and diagnostics are per machine: they show one environment at a time, the primary
-one until you pick another. Every other setting fans out to the selection.
+Providers and diagnostics are per machine: they show one environment at a time. Pages that need
+a single machine, such as Providers and Secrets, start on the environment you last picked there,
+otherwise the primary one. Every other setting fans out to the selection.
 
 With a project selected, a provider's switch in **Settings → Providers** turns it on or off for
 that project only, in either direction: a provider off on the machine can be used in one project,

@@ -3,7 +3,7 @@ import { parseT3ProjectFile } from "@t3tools/shared/t3ProjectFile";
 import { useAtomValue } from "@effect/atom-react";
 import { AsyncResult, Atom } from "effect/reactivity";
 import { useMessages } from "gt-react";
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
 import { getProjectFileQueryAtom, optimisticFileAtom } from "../files/projectFilesQueryState";
@@ -14,6 +14,10 @@ import {
   resolveScopedSettingsTargets,
   selectScopedSettingsEnvironments,
 } from "./scopedSettings";
+import {
+  readRememberedSettingsEnvironment,
+  rememberSettingsEnvironment,
+} from "./settingsEnvironmentPreference";
 import { resolveSettingsScope, type SettingsScopeSearch } from "./settingsScope";
 import { selectSingleEnvironmentScope } from "./settingsScopeAxis";
 
@@ -65,6 +69,7 @@ function useResolvedSettingsScope(rawSearch: SettingsScopeSearch, singleEnvironm
   const groups = useSettingsProjectGroups();
   const { environments: availableEnvironments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const [rememberedEnvironmentId] = useState(() => readRememberedSettingsEnvironment());
   const m = useMessages();
   const search = singleEnvironment
     ? selectSingleEnvironmentScope(
@@ -72,6 +77,7 @@ function useResolvedSettingsScope(rawSearch: SettingsScopeSearch, singleEnvironm
         resolveSettingsScope(rawSearch, groups, availableEnvironments, m),
         availableEnvironments,
         primaryEnvironmentId,
+        rememberedEnvironmentId,
       )
     : rawSearch;
   const scope = resolveSettingsScope(search, groups, availableEnvironments, m);
@@ -119,7 +125,18 @@ export function SettingsScopeProvider({
   children: ReactNode;
 }) {
   const resolved = useResolvedSettingsScope(search, singleEnvironment);
-  const value = { ...resolved, singleEnvironment, deviceOnly, selectScope: onChange };
+  const { environments } = useEnvironments();
+  const selectScope = (next: SettingsScopeSearch) => {
+    if (
+      singleEnvironment &&
+      next.machine !== undefined &&
+      environments.some((environment) => environment.environmentId === next.machine)
+    ) {
+      rememberSettingsEnvironment(next.machine);
+    }
+    onChange(next);
+  };
+  const value = { ...resolved, singleEnvironment, deviceOnly, selectScope };
   return <SettingsScopeContext value={value}>{children}</SettingsScopeContext>;
 }
 
